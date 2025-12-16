@@ -1,0 +1,11 @@
+import joblib
+
+model = joblib.load("models/model_Turbidity.pkl")
+
+feature_names = [
+    "Turbidity(1)", "pH(1)", "TOC(1)", "COD(1)",
+    "PAC", "NAOH", "FLOCCULANT"
+]
+
+for name, score in zip(feature_names, model.feature_importances_):
+    print(name, round(score, 3))
