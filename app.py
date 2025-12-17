@@ -4,6 +4,7 @@ import joblib
 import pandas as pd
 
 from optimization.ph_control import adjust_naoh, estimate_ph
+from fastapi.responses import HTMLResponse
 
 # -----------------------------
 # Load trained models
@@ -93,13 +94,7 @@ def predict(input_data: WaterInput):
 
     return {"dose": result, "warnings": warnings}
 
-@app.get("/")
-def root():
-    return {
-        "status": "ok",
-        "message": "Water Treatment Dose API is running",
-        "endpoints": {
-            "predict": "/predict-dose",
-            "docs": "/docs"
-        }
-    }
+    @app.get("/", response_class=HTMLResponse)
+def serve_ui():
+    with open("index.html", "r", encoding="utf-8") as f:
+        return f.read()
