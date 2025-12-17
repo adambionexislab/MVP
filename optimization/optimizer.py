@@ -1,97 +1,128 @@
 import joblib
 import numpy as np
+import pandas as pd
 from scipy.optimize import minimize
 
-# -----------------------------
-# Load models and scaler
-# -----------------------------
+# =============================
+# Load models and scalers
+# =============================
 MODEL_DIR = "models"
 
-scaler = joblib.load(f"{MODEL_DIR}/scaler.pkl")
-model_pH = joblib.load(f"{MODEL_DIR}/model_pH.pkl")
-model_TOC = joblib.load(f"{MODEL_DIR}/model_TOC.pkl")
-model_COD = joblib.load(f"{MODEL_DIR}/model_COD.pkl")
-model_Turb = joblib.load(f"{MODEL_DIR}/model_Turbidity.pkl")
+model_ph = joblib.load(f"{MODEL_DIR}/model_ph.pkl")
+scaler_ph = joblib.load(f"{MODEL_DIR}/scaler_ph.pkl")
 
-# -----------------------------
+model_turb = joblib.load(f"{MODEL_DIR}/model_turbidity.pkl")
+model_toc = joblib.load(f"{MODEL_DIR}/model_toc.pkl")
+model_cod = joblib.load(f"{MODEL_DIR}/model_cod.pkl")
+scaler_solids = joblib.load(f"{MODEL_DIR}/scaler_solids.pkl")
+
+# =============================
 # Regulatory limits (HARD)
-# -----------------------------
+# =============================
 LIMITS = {
     "pH_min": 7.0,
     "pH_max": 7.5,
-    "TOC_max": 10.0,
-    "COD_max": 200.0,
-    "Turbidity_max": 10.0
+    "TOC_max": 1.6,
+    "COD_max": 140.0,
+    "Turbidity_max": 6.0
 }
 
-# -----------------------------
-# Dose bounds (PROCESS-BASED)
-# -----------------------------
+# =============================
+# Operator targets (from data)
+# =============================
+TARGETS = {
+    "pH": 7.2,
+    "TOC": 1.5,
+    "COD": 120.0,
+    "Turbidity": 5.0
+}
+
+# =============================
+# Dose bounds
+# =============================
 BOUNDS = [
-    (0.2, 20),   # PAC
-    (0.1, 20),   # NAOH
-    (2, 50)      # FLOCCULANT (diluted)
+    (0.2, 20.0),   # PAC
+    (0.1, 20.0),   # NAOH
+    (2.0, 50.0)    # FLOCCULANT
 ]
 
-# PAC–NAOH coupling coefficient
-NAOH_PER_PAC = 1.15
+# =============================
+# NAOH dynamic parameters
+# =============================
+NAOH_PER_PAC = 1.15  # NaOH per unit PAC
+PH_COEFF = 0.5   # NaOH per pH deviation from 7
 
-# Optional: historical dose prior
-HISTORICAL_MEAN = np.array([10, 2, 10])  # PAC, NAOH, FLOCCULANT
-DOSE_PRIOR_WEIGHT = 0.01
-
-# Safety margin for target
-SAFE_MARGIN = 0.85  # 99% of limit
-# -----------------------------
-# Prediction helper
-# -----------------------------
+# =============================
+# Prediction function
+# =============================
 def predict_treated(x, raw_water):
-    features = np.array([
-        raw_water[0],  # Turbidity(1)
-        raw_water[1],  # pH(1)
-        raw_water[2],  # TOC(1)
-        raw_water[3],  # COD(1)
-        x[0],          # PAC
-        x[1],          # NAOH
-        x[2]           # FLOCCULANT
-    ]).reshape(1, -1)
+    """
+    Predict treated water quality with monotonic dose-response correction.
+    
+    Inputs:
+        x: [PAC, NAOH, FLOCCULANT]
+        raw_water: [Turbidity(1), pH(1), TOC(1), COD(1)]
+    
+    Returns:
+        dict with predicted pH, TOC, COD, Turbidity
+    """
+    pac, naoh, floc = x
+    turb1, ph1, toc1, cod1 = raw_water
 
-    features_scaled = scaler.transform(features)
+    # ---- pH prediction (ML model) ----
+    X_ph = pd.DataFrame([[ph1, pac, naoh]], columns=["pH(1)", "PAC", "NAOH"])
+    X_ph_s = scaler_ph.transform(X_ph)
+    ph2 = float(model_ph.predict(X_ph_s)[0])
 
-    return {
-        "pH": float(model_pH.predict(features_scaled)[0]),
-        "TOC": float(model_TOC.predict(features_scaled)[0]),
-        "COD": float(model_COD.predict(features_scaled)[0]),
-        "Turbidity": float(model_Turb.predict(features_scaled)[0])
-    }
+    # ---- Solids prediction (ML model) ----
+    X_sol = pd.DataFrame([[turb1, toc1, cod1, pac, floc]],
+                         columns=["Turbidity(1)", "TOC(1)", "COD(1)", "PAC", "FLOCCULANT"])
+    X_sol_s = scaler_solids.transform(X_sol)
 
-# -----------------------------
-# Margin-based objective
-# -----------------------------
+    turb2 = float(model_turb.predict(X_sol_s)[0])
+    toc2  = float(model_toc.predict(X_sol_s)[0])
+    cod2  = float(model_cod.predict(X_sol_s)[0])
+
+    # ---- Monotonic dose-response correction ----
+    # Ensure more PAC/FLOCCULANT -> lower solids
+    # Coefficients can be tuned to match process sensitivity
+    turb2 = max(0.0, turb2 - 0.03 * (pac + floc))
+    toc2  = max(0.0, toc2  - 0.03 * (pac + floc))
+    cod2  = max(0.0, cod2  - 0.03 * (pac + floc))
+
+    return {"pH": ph2, "TOC": toc2, "COD": cod2, "Turbidity": turb2}
+# =============================
+# Objective function
+# =============================
 def objective(x, raw_water):
     pred = predict_treated(x, raw_water)
 
-    # Soft margin targets (below regulatory limits)
-    turb_target = SAFE_MARGIN * LIMITS["Turbidity_max"]
-    toc_target = SAFE_MARGIN * LIMITS["TOC_max"]
-    cod_target = SAFE_MARGIN * LIMITS["COD_max"]
-    ph_target = 7.25  # middle of pH band
+    # Match operator-achieved quality
+    turb_penalty = (pred["Turbidity"] - TARGETS["Turbidity"]) ** 2
+    toc_penalty = (pred["TOC"] - TARGETS["TOC"]) ** 2
+    cod_penalty = (pred["COD"] - TARGETS["COD"]) ** 2
+    ph_penalty = (pred["pH"] - TARGETS["pH"]) ** 2
 
-    # Penalize distance from soft targets
-    turb_penalty = (pred["Turbidity"] - turb_target) ** 2
-    toc_penalty = (pred["TOC"] - toc_target) ** 2
-    cod_penalty = (pred["COD"] - cod_target) ** 2
-    ph_penalty = (pred["pH"] - ph_target) ** 2
-
-    # Encourage staying near historical dose if desired
-    dose_penalty = DOSE_PRIOR_WEIGHT * np.sum((x - HISTORICAL_MEAN) ** 2)
+    # Minimize chemicals (small weight)
+    dose_penalty = 0.05 * (x[0] + x[1] + x[2])
 
     return turb_penalty + toc_penalty + cod_penalty + ph_penalty + dose_penalty
 
-# -----------------------------
+# =============================
 # Constraints
-# -----------------------------
+# =============================
+def naoh_dynamic_constraint(x, raw_water):
+    pac, naoh, _ = x
+    ph1 = raw_water[1]
+
+    ph_adjustment = PH_COEFF * (7 - ph1)
+    pac_requirement = NAOH_PER_PAC * pac
+    required_naoh = pac_requirement + ph_adjustment
+
+    return naoh - required_naoh  # Can be negative if pH > 7
+
 def constraint_funcs(raw_water):
+    turb1, ph1, toc1, cod1 = raw_water
 
     def pH_min(x):
         return predict_treated(x, raw_water)["pH"] - LIMITS["pH_min"]
@@ -108,9 +139,14 @@ def constraint_funcs(raw_water):
     def Turb_max(x):
         return LIMITS["Turbidity_max"] - predict_treated(x, raw_water)["Turbidity"]
 
-    def naoh_pac_coupling(x):
-        pac, naoh, _ = x
-        return naoh - NAOH_PER_PAC * pac
+    def floc_ge_pac(x):
+        pac, _, floc = x
+        return floc - 7.0 * pac
+
+    def pac_minimum(x):
+        pac, _, _ = x
+        load = 0.04 * turb1 + 0.04 * toc1 + 0.04 * cod1
+        return pac - 0.0225 * load
 
     return [
         {"type": "ineq", "fun": pH_min},
@@ -118,24 +154,24 @@ def constraint_funcs(raw_water):
         {"type": "ineq", "fun": TOC_max},
         {"type": "ineq", "fun": COD_max},
         {"type": "ineq", "fun": Turb_max},
-        {"type": "ineq", "fun": naoh_pac_coupling}
+        {"type": "ineq", "fun": lambda x: naoh_dynamic_constraint(x, raw_water)},
+        {"type": "ineq", "fun": floc_ge_pac},
+        {"type": "ineq", "fun": pac_minimum},
     ]
 
-# -----------------------------
+# =============================
 # Main optimization function
-# -----------------------------
+# =============================
 def optimize_dose(raw_water):
-
     initial_guesses = [
-        [0.5, 0.2, 3],
-        [5, 2, 10],
-        [10, 5, 25]
+        [1.0, 0.5, 5.0],
+        [5.0, 2.0, 10.0],
+        [10.0, 5.0, 25.0]
     ]
 
-    best_result = None
-
+    best = None
     for x0 in initial_guesses:
-        result = minimize(
+        res = minimize(
             objective,
             x0,
             args=(raw_water,),
@@ -144,28 +180,27 @@ def optimize_dose(raw_water):
             constraints=constraint_funcs(raw_water),
             options={"maxiter": 300, "ftol": 1e-6}
         )
+        if res.success:
+            if best is None or res.fun < best.fun:
+                best = res
 
-        if result.success:
-            if best_result is None or result.fun < best_result.fun:
-                best_result = result
+    if best is None:
+        return {"error": "No feasible solution found"}
 
-    if best_result is None:
-        return {"error": "No feasible dosage found within constraints"}
-
-    doses = best_result.x
-    treated = predict_treated(doses, raw_water)
+    doses = best.x
+    pred = predict_treated(doses, raw_water)
 
     return {
         "PAC": float(doses[0]),
         "NAOH": float(doses[1]),
         "FLOCCULANT": float(doses[2]),
-        "predicted_output": treated
+        "predicted_output": pred
     }
 
-# -----------------------------
-# Standalone test
-# -----------------------------
+# =============================
+# Test run
+# =============================
 if __name__ == "__main__":
-    example_raw = [250, 6.2, 1531.8, 2280]
+    example_raw = [70, 7.2, 10.57, 1079]  # Turbidity(1), pH(1), TOC(1), COD(1)
     result = optimize_dose(example_raw)
     print(result)
