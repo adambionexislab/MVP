@@ -92,3 +92,14 @@ def predict(input_data: WaterInput):
         warnings.append("Estimated pH out of regulatory limits.")
 
     return {"dose": result, "warnings": warnings}
+
+@app.get("/")
+def root():
+    return {
+        "status": "ok",
+        "message": "Water Treatment Dose API is running",
+        "endpoints": {
+            "predict": "/predict-dose",
+            "docs": "/docs"
+        }
+    }
