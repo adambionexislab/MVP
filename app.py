@@ -95,6 +95,6 @@ def predict(input_data: WaterInput):
     return {"dose": result, "warnings": warnings}
 
     @app.get("/", response_class=HTMLResponse)
-def serve_ui():
-    with open("index.html", "r", encoding="utf-8") as f:
-        return f.read()
+    def serve_ui():
+        with open("index.html", "r", encoding="utf-8") as f:
+            return f.read()
