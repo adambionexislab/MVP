@@ -98,11 +98,5 @@ def predict(input_data: WaterInput):
 # -----------------------------
 @app.get("/", response_class=HTMLResponse)
 def serve_ui():
-    return """
-    <html>
-        <body>
-            <h1>Water Treatment Dose Optimizer</h1>
-            <p>UI is loading</p>
-        </body>
-    </html>
-    """
+    with open("index.html", "r", encoding="utf-8") as f:
+        return f.read()
