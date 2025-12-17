@@ -2,9 +2,9 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
 import pandas as pd
+from fastapi.responses import HTMLResponse
 
 from optimization.ph_control import adjust_naoh, estimate_ph
-from fastapi.responses import HTMLResponse
 
 # -----------------------------
 # Load trained models
@@ -87,21 +87,22 @@ def predict(input_data: WaterInput):
 
     result = predict_dose(raw_dict)
 
-    # Optional warning flags
     warnings = []
     if result["estimated_pH"] < 7.0 or result["estimated_pH"] > 7.5:
         warnings.append("Estimated pH out of regulatory limits.")
 
     return {"dose": result, "warnings": warnings}
 
-    @app.get("/", response_class=HTMLResponse)
-    def serve_ui():
-        return """
-        <html>
-            <body>
-                <h1>Water Treatment Dose Optimizer</h1>
-                <p>UI is loading</p>
-            </body>
-        </html>
+# -----------------------------
+# UI endpoint (ROOT)
+# -----------------------------
+@app.get("/", response_class=HTMLResponse)
+def serve_ui():
+    return """
+    <html>
+        <body>
+            <h1>Water Treatment Dose Optimizer</h1>
+            <p>UI is loading</p>
+        </body>
+    </html>
     """
-
