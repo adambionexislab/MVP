@@ -86,7 +86,7 @@ async function predictDose() {
     const toc = parseFloat(document.getElementById('toc').value);
     const cod = parseFloat(document.getElementById('cod').value);
     const ph = parseFloat(document.getElementById('ph').value);
-    const response = await fetch("https://bionexislab3.onrender.com/", {
+    const response = await fetch("https://bionexislab3.onrender.com", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Turbidity: turb, TOC: toc, COD: cod, pH: ph })

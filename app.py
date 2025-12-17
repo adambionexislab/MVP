@@ -94,7 +94,8 @@ def predict(input_data: WaterInput):
 
     return {"dose": result, "warnings": warnings}
 
-    @app.get("https://bionexislab3.onrender.com/", response_class=HTMLResponse)
+    @app.get("/", response_class=HTMLResponse)
     def serve_ui():
+        print("SERVING INDEX.HTML")
         with open("index.html", "r", encoding="utf-8") as f:
             return f.read()
