@@ -1,0 +1,25 @@
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+
+# ---- 1. Load dataset ----
+# CHANGE the path if needed
+df = pd.read_csv("data/cleaned_data.csv")
+
+# ---- 2. Select features and target ----
+X = df[["Turbidity(1)", "TOC(1)", "COD(1)"]]
+y = df["PAC"]
+
+# ---- 3. Train linear PAC demand model ----
+model = LinearRegression()
+model.fit(X, y)
+
+# ---- 4. Output coefficients ----
+A, B, C = model.coef_
+D = model.intercept_
+
+print("Learned PAC rule:")
+print(f"PAC >= {A:.4f} * Turbidity + {B:.4f} * TOC + {C:.4f} * COD + {D:.4f}")
+
+# ---- 5. Optional: quality check ----
+r2 = model.score(X, y)
+print(f"R² = {r2:.3f}")
