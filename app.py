@@ -5,7 +5,7 @@ import pandas as pd
 from fastapi.responses import HTMLResponse
 
 from optimization.ph_control import adjust_naoh, estimate_ph
-from logging.gsheets_logger import log_prediction
+from utils.gsheets_logger import log_prediction
 
 # -----------------------------
 # Load trained models
