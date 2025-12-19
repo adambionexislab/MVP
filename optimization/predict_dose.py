@@ -66,18 +66,7 @@ def predict_dose(raw_water: dict):
         "NAOH": round(naoh, 3),
         "estimated_pH": round(ph_est, 3)
     }
-# -----------------------------
-# gsheets
-# -----------------------------
-result = predict_dose(raw_dict)
 
-warnings = []
-if result["estimated_pH"] < 7.0 or result["estimated_pH"] > 7.5:
-    warnings.append("Estimated pH out of regulatory limits.")
-
-log_prediction(raw_dict, result, warnings)
-
-return {"dose": result, "warnings": warnings}
 
 # -----------------------------
 # test
@@ -91,3 +80,16 @@ if __name__ == "__main__":
     }
 
     print(predict_dose(sample))
+
+# -----------------------------
+# gsheets
+# -----------------------------
+result = predict_dose(raw_dict)
+
+warnings = []
+if result["estimated_pH"] < 7.0 or result["estimated_pH"] > 7.5:
+    warnings.append("Estimated pH out of regulatory limits.")
+
+log_prediction(raw_dict, result, warnings)
+
+return {"dose": result, "warnings": warnings}
