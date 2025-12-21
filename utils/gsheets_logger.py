@@ -4,13 +4,17 @@ import os
 from datetime import datetime
 from google.oauth2.service_account import Credentials
 
-SCOPE = ["https://www.googleapis.com/auth/spreadsheets"]
+SCOPE = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
 SHEET_NAME = "WaterTreatmentLogs"
 
 def get_sheet():
     creds_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
     if not creds_json:
-        raise RuntimeError("Google credentials not found in environment variables")
+        raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_JSON not set")
 
     creds_dict = json.loads(creds_json)
     creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPE)
@@ -34,5 +38,5 @@ def log_prediction(input_data, output_data, warnings):
             ", ".join(warnings)
         ])
     except Exception as e:
-        # Never break the API because of logging
         print("Google Sheets logging failed:", e)
+
