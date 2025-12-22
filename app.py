@@ -3,8 +3,6 @@ from pydantic import BaseModel
 import joblib
 import pandas as pd
 from fastapi.responses import HTMLResponse
-
-from optimization.ph_control import adjust_naoh, estimate_ph
 from utils.gsheets_logger import log_prediction
 
 # -----------------------------
@@ -62,7 +60,6 @@ def predict_dose(raw_water: dict):
         naoh_base=naoh_base,
         ph1=raw_water["pH"],
         pac=pac,
-        ph_pred=ph_est
     )
 
     return {
