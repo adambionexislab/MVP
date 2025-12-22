@@ -44,24 +44,15 @@ def predict_dose(raw_water: dict):
     # NAOH (policy)
     # -----------------------------
     X_naoh = pd.DataFrame([{
-        "pH(1)": raw_water["pH(1)"],
+        "pH(1)": raw_water["pH"],
         "PAC": pac
     }])
     naoh_base = float(naoh_model.predict(X_naoh)[0])
 
-    # -----------------------------
-    # pH control
-    # -----------------------------
-    X_naoh = pd.DataFrame([{
-        "pH(1)": raw_water["pH"],
-        "PAC": pac
-    }])
-    naoh = float(naoh_model.predict(X_naoh)[0])
     return {
         "PAC": round(pac, 3),
         "FLOCCULANT": round(floc, 3),
-        "NAOH": round(naoh, 3),
-        "estimated_pH": round(ph_est, 3)
+        "NAOH": round(naoh_base, 3)
     }
 
 # -----------------------------

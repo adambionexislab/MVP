@@ -57,7 +57,7 @@ def predict_dose(raw_water: dict):
     return {
         "PAC": round(pac, 3),
         "FLOCCULANT": round(floc, 3),
-        "NAOH": round(naoh, 3),
+        "NAOH": round(naoh_base, 3),
     }
 
 # -----------------------------
