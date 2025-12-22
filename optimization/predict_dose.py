@@ -52,14 +52,11 @@ def predict_dose(raw_water: dict):
     # -----------------------------
     # pH control
     # -----------------------------
-    ph_est = estimate_ph(raw_water["pH(1)"], pac, naoh_base)
-    naoh = adjust_naoh(
-        naoh_base=naoh_base,
-        ph1=raw_water["pH(1)"],
-        pac=pac,
-        ph_pred=ph_est
-    )
-
+    X_naoh = pd.DataFrame([{
+        "pH(1)": raw_water["pH"],
+        "PAC": pac
+    }])
+    naoh = float(naoh_model.predict(X_naoh)[0])
     return {
         "PAC": round(pac, 3),
         "FLOCCULANT": round(floc, 3),
@@ -67,6 +64,9 @@ def predict_dose(raw_water: dict):
         "estimated_pH": round(ph_est, 3)
     }
 
+# -----------------------------
+# test
+# -----------------------------
 if __name__ == "__main__":
     sample = {
         "Turbidity(1)": 250,

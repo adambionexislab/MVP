@@ -79,8 +79,6 @@ def predict_dose(raw_water: dict):
 # -----------------------------
 @app.post("/predict-dose")
 def predict(input_data: WaterInput):
-    print("PREDICT ENDPOINT CALLED")
-
     raw_dict = {
         "Turbidity": input_data.Turbidity,
         "TOC": input_data.TOC,
@@ -90,17 +88,9 @@ def predict(input_data: WaterInput):
 
     result = predict_dose(raw_dict)
 
-    warnings = []
-    if result["estimated_pH"] < 7.0 or result["estimated_pH"] > 7.5:
-        warnings.append("Estimated pH out of regulatory limits.")
+    log_prediction(raw_dict, result, [])
 
-    print("ABOUT TO LOG TO GOOGLE SHEETS")
-
-    log_prediction(raw_dict, result, warnings)
-
-    print("LOG FUNCTION RETURNED")
-
-    return {"dose": result, "warnings": warnings}
+    return {"dose": result}
 
 # -----------------------------
 # UI endpoint (ROOT)

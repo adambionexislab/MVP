@@ -33,9 +33,7 @@ def log_prediction(input_data, output_data, warnings):
             input_data["pH"],
             output_data["PAC"],
             output_data["FLOCCULANT"],
-            output_data["NAOH"],
-            output_data["estimated_pH"],
-            ", ".join(warnings)
+            output_data["NAOH"]
         ])
     except Exception as e:
         print("Google Sheets logging failed:", e)
