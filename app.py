@@ -56,8 +56,6 @@ def predict_dose(raw_water: dict):
     }])
     naoh_base = float(naoh_model.predict(X_naoh)[0])
 
-    # pH estimate
-    ph_est = estimate_ph(raw_water["pH"], pac, naoh_base)
 
     # NAOH safety adjustment
     naoh = adjust_naoh(
@@ -71,7 +69,6 @@ def predict_dose(raw_water: dict):
         "PAC": round(pac, 3),
         "FLOCCULANT": round(floc, 3),
         "NAOH": round(naoh, 3),
-        "estimated_pH": round(ph_est, 3)
     }
 
 # -----------------------------
