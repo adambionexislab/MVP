@@ -3,6 +3,7 @@ import json
 import os
 from datetime import datetime
 from google.oauth2.service_account import Credentials
+from zoneinfo import ZoneInfo
 
 SCOPE = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -26,7 +27,7 @@ def log_prediction(input_data, output_data, warnings):
     try:
         sheet = get_sheet()
         sheet.append_row([
-            datetime.utcnow().isoformat(),
+            datetime.now(ZoneInfo("Europe/Rome")).isoformat(),
             input_data["Turbidity"],
             input_data["TOC"],
             input_data["COD"],
