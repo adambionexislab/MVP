@@ -105,7 +105,6 @@ async function predictDose() {
                 <p>PAC: ${data.dose.PAC}</p>
                 <p>FLOCCULANT: ${data.dose.FLOCCULANT}</p>
                 <p>NAOH: ${data.dose.NAOH}</p>
-                <p>Estimated pH: ${data.dose.estimated_pH}</p>`;
 
     if (data.warnings && data.warnings.length > 0) {
         html += `<p class="warning">Warning: ${data.warnings.join(', ')}</p>`;
